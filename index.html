@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>EvanYork's APP</title>
+    <style>
+        body { background-color: #121212; color: #ffffff; font-family: sans-serif; text-align: center; padding-top: 50px; }
+        h1 { color: #00e676; }
+        .app-card { 
+            display: inline-block; width: 250px; margin: 20px; padding: 20px; 
+            background: #1e1e1e; border-radius: 15px; border: 2px solid #333;
+            text-decoration: none; color: white; transition: 0.3s;
+        }
+        /* 模拟遥控器选中效果 */
+        .app-card:focus, .app-card:hover { border-color: #00e676; transform: scale(1.05); background: #262626; }
+        .version { font-size: 0.8em; color: #aaa; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>EvanYork's APP 专用分发中心</h1>
+    <p>点击下方卡片直接下载到 Google TV</p>
+
+    <a class="app-card" href="https://github.com/MetaCubeX/ClashMetaForAndroid/releases/latest">
+        <h3>Clash Meta</h3>
+        <div class="version">点击跳转最新 Release</div>
+    </a>
+
+    <a class="app-card" href="https://app.iqiyi.com/tv/player/index.html">
+        <h3>银河奇异果</h3>
+        <div class="version">官网直连版本</div>
+    </a>
+
+    <script>
+        // 自动聚焦第一个，方便遥控器操作
+        document.querySelector('.app-card').focus();
+    </script>
+</body>
+</html>
