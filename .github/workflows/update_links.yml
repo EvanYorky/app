@@ -22,16 +22,30 @@ jobs:
 
       - name: Update HTML File
         run: |
-          # 针对 ClashMeta 的链接和版本号进行精准替换
-          # 匹配 id="clash_link" 的 href 属性并更新
+          # 1. 处理 ClashMeta (动态抓取)
           sed -i "s|id=\"clash_link\" href=\"[^\"]*\"|id=\"clash_link\" href=\"${{ env.CLASH_URL }}\"|g" index.html
-          # 匹配 id="clash_ver" 的标签内容并更新版本号
           sed -i "s|id=\"clash_ver\"[^>]*>[^<]*<|id=\"clash_ver\" class=\"version\">版本: ${{ env.CLASH_TAG }}<|g" index.html
+
+          # 2. 处理国内 App 及常用工具 (官方定向链接)
+          # 银河奇异果
+          sed -i "s|id=\"qiyi_link\" href=\"[^\"]*\"|id=\"qiyi_link\" href=\"https://app.iqiyi.com/tv/player/index.html\"|g" index.html
+          
+          # 云视听极光
+          sed -i "s|id=\"jiguang_link\" href=\"[^\"]*\"|id=\"jiguang_link\" href=\"https://v.qq.com/download.html#tv\"|g" index.html
+          
+          # 酷喵
+          sed -i "s|id=\"kumiao_link\" href=\"[^\"]*\"|id=\"kumiao_link\" href=\"https://mobile.youku.com/index/pc\"|g" index.html
+          
+          # 云视听小电视
+          sed -i "s|id=\"bili_link\" href=\"[^\"]*\"|id=\"bili_link\" href=\"https://app.bilibili.com/general/apk/download?appkey=1\&build=0\&mobi_app=android_tv_yst\"|g" index.html
+          
+          # TiviMate
+          sed -i "s|id=\"tivi_link\" href=\"[^\"]*\"|id=\"tivi_link\" href=\"https://tivimate.com/tivimate.apk\"|g" index.html
 
       - name: Commit and Push
         run: |
           git config --global user.name "YUNF-Bot"
           git config --global user.email "bot@github.com"
           git add index.html
-          git commit -m "Auto-update: Latest APK links (v7a)" || exit 0
+          git commit -m "Auto-update: All APK links" || exit 0
           git push
