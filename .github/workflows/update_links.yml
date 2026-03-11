@@ -12,7 +12,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Get Latest ClashMeta Link
+      - name: Get Latest ClashMeta and Dangbei Links
         run: |
           # 抓取 GitHub Release 的最新下载地址 (过滤出 armeabi-v7a 架构)
           CLASH_URL=$(curl -s https://api.github.com/repos/MetaCubeX/ClashMetaForAndroid/releases/latest | grep "browser_download_url" | grep "armeabi-v7a" | cut -d '"' -f 4 | head -n 1)
@@ -20,32 +20,40 @@ jobs:
           echo "CLASH_URL=$CLASH_URL" >> $GITHUB_ENV
           echo "CLASH_TAG=$CLASH_TAG" >> $GITHUB_ENV
 
+          # 定义当贝链接提取函数 (抓取 down.znds.com 的直连)
+          get_db_link() {
+            curl -L -s "https://www.dangbei.com/app/tv/$1.html" | grep -o 'https://down.znds.com/getdownurl/[^"]*' | head -n 1
+          }
+
+          # 抓取国内 App 在当贝市场的最新直连链接
+          echo "QIYI_URL=$(get_db_link 1)" >> $GITHUB_ENV
+          echo "JIGUANG_URL=$(get_db_link 2)" >> $GITHUB_ENV
+          echo "KUMIAO_URL=$(get_db_link 3)" >> $GITHUB_ENV
+          echo "BILI_URL=$(get_db_link 1484)" >> $GITHUB_ENV
+
       - name: Update HTML File
         run: |
           # 1. 处理 ClashMeta (动态抓取)
           sed -i "s|id=\"clash_link\" href=\"[^\"]*\"|id=\"clash_link\" href=\"${{ env.CLASH_URL }}\"|g" index.html
           sed -i "s|id=\"clash_ver\"[^>]*>[^<]*<|id=\"clash_ver\" class=\"version\">版本: ${{ env.CLASH_TAG }}<|g" index.html
 
-          # 2. 处理国内 App 及常用工具 (官方定向链接)
+          # 2. 处理国内 App 及常用工具 (从当贝爬取直连)
           # 银河奇异果
-          sed -i "s|id=\"qiyi_link\" href=\"[^\"]*\"|id=\"qiyi_link\" href=\"https://app.iqiyi.com/tv/player/index.html\"|g" index.html
+          sed -i "s|id=\"qiyi_link\" href=\"[^\"]*\"|id=\"qiyi_link\" href=\"${{ env.QIYI_URL }}\"|g" index.html
           
           # 云视听极光
-          sed -i "s|id=\"jiguang_link\" href=\"[^\"]*\"|id=\"jiguang_link\" href=\"https://v.qq.com/download.html#tv\"|g" index.html
+          sed -i "s|id=\"jiguang_link\" href=\"[^\"]*\"|id=\"jiguang_link\" href=\"${{ env.JIGUANG_URL }}\"|g" index.html
           
           # 酷喵
-          sed -i "s|id=\"kumiao_link\" href=\"[^\"]*\"|id=\"kumiao_link\" href=\"https://mobile.youku.com/index/pc\"|g" index.html
+          sed -i "s|id=\"kumiao_link\" href=\"[^\"]*\"|id=\"kumiao_link\" href=\"${{ env.KUMIAO_URL }}\"|g" index.html
           
           # 云视听小电视
-          sed -i "s|id=\"bili_link\" href=\"[^\"]*\"|id=\"bili_link\" href=\"https://app.bilibili.com/general/apk/download?appkey=1\&build=0\&mobi_app=android_tv_yst\"|g" index.html
-          
-          # TiviMate
-          sed -i "s|id=\"tivi_link\" href=\"[^\"]*\"|id=\"tivi_link\" href=\"https://tivimate.com/tivimate.apk\"|g" index.html
+          sed -i "s|id=\"bili_link\" href=\"[^\"]*\"|id=\"bili_link\" href=\"${{ env.BILI_URL }}\"|g" index.html
 
       - name: Commit and Push
         run: |
           git config --global user.name "YUNF-Bot"
           git config --global user.email "bot@github.com"
           git add index.html
-          git commit -m "Auto-update: All APK links" || exit 0
+          git commit -m "Auto-update: Clash and Dangbei APK links" || exit 0
           git push
