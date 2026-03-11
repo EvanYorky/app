@@ -14,25 +14,24 @@ jobs:
 
       - name: Get Latest ClashMeta Link
         run: |
-          # 抓取 GitHub Release 的最新下载地址 (过滤出 arm64-v8a 架构)
-          CLASH_URL=$(curl -s https://api.github.com/repos/MetaCubeX/ClashMetaForAndroid/releases/latest | grep "browser_download_url" | grep "arm64-v8a" | cut -d '"' -f 4 | head -n 1)
+          # 抓取 GitHub Release 的最新下载地址 (过滤出 armeabi-v7a 架构)
+          CLASH_URL=$(curl -s https://api.github.com/repos/MetaCubeX/ClashMetaForAndroid/releases/latest | grep "browser_download_url" | grep "armeabi-v7a" | cut -d '"' -f 4 | head -n 1)
           CLASH_TAG=$(curl -s https://api.github.com/repos/MetaCubeX/ClashMetaForAndroid/releases/latest | grep "tag_name" | cut -d '"' -f 4)
           echo "CLASH_URL=$CLASH_URL" >> $GITHUB_ENV
           echo "CLASH_TAG=$CLASH_TAG" >> $GITHUB_ENV
 
       - name: Update HTML File
         run: |
-          # 使用 sed 命令替换 HTML 里的占位符
-          # 这里以 Clash 为例，你可以继续添加其他软件的替换逻辑
-          sed -i "s|id=\"clash_link\" href=\"#\"|id=\"clash_link\" href=\"${{ env.CLASH_URL }}\"|g" index.html
-          sed -i "s|正在获取最新版...|版本: ${{ env.CLASH_TAG }}|g" index.html
-          
-          # 银河奇异果通常地址较固定，可手动填入或写爬虫抓取官网
+          # 针对 ClashMeta 的链接和版本号进行精准替换
+          # 匹配 id="clash_link" 的 href 属性并更新
+          sed -i "s|id=\"clash_link\" href=\"[^\"]*\"|id=\"clash_link\" href=\"${{ env.CLASH_URL }}\"|g" index.html
+          # 匹配 id="clash_ver" 的标签内容并更新版本号
+          sed -i "s|id=\"clash_ver\"[^>]*>[^<]*<|id=\"clash_ver\" class=\"version\">版本: ${{ env.CLASH_TAG }}<|g" index.html
 
       - name: Commit and Push
         run: |
           git config --global user.name "YUNF-Bot"
           git config --global user.email "bot@github.com"
           git add index.html
-          git commit -m "Auto-update: Latest APK links" || exit 0
+          git commit -m "Auto-update: Latest APK links (v7a)" || exit 0
           git push
