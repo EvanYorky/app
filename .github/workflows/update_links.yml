@@ -2,8 +2,8 @@ name: Auto Update APK Links
 
 on:
   schedule:
-    - cron: '0 0 * * *' # 每天北京时间早上8点自动执行
-  workflow_dispatch: # 允许你手动点击运行
+    - cron: '0 0 * * *' # 每天早上8点自动执行
+  workflow_dispatch: 
 
 jobs:
   update-links:
@@ -12,52 +12,69 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Get Latest ClashMeta and Dangbei Links
+      - name: Get Latest Links
         run: |
-          # 1. 抓取 ClashMeta (v7a版)
+          # 1. 抓取 ClashMeta (v7a)
           CLASH_DATA=$(curl -s https://api.github.com/repos/MetaCubeX/ClashMetaForAndroid/releases/latest)
           CLASH_URL=$(echo "$CLASH_DATA" | grep "browser_download_url" | grep "armeabi-v7a" | cut -d '"' -f 4 | head -n 1)
           CLASH_TAG=$(echo "$CLASH_DATA" | grep "tag_name" | cut -d '"' -f 4)
           
-          # 2. 定义当贝爬取函数 (带上伪装浏览器头，防止被屏蔽)
+          # 2. 抓取当贝链接 (带上浏览器伪装)
           get_db_link() {
             curl -L -s -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" "https://www.dangbei.com/app/tv/$1.html" | grep -o 'https://down.znds.com/getdownurl/[^"]*' | head -n 1
           }
 
-          # 抓取链接
-          QIYI_URL=$(get_db_link 1)
-          JIGUANG_URL=$(get_db_link 2)
-          KUMIAO_URL=$(get_db_link 3)
-          BILI_URL=$(get_db_link 1484)
-
-          # 打印日志 (方便你在 Actions 页面排查是否抓到了链接)
-          echo "Clash URL: $CLASH_URL"
-          echo "QiYi URL: $QIYI_URL"
-          echo "JiGuang URL: $JIGUANG_URL"
+          # 打印调试信息，如果你在Actions日志里看到这些URL是空的，说明抓取环节出了问题
+          echo "DEBUG_CLASH=$CLASH_URL"
+          echo "DEBUG_QIYI=$(get_db_link 1)"
 
           # 存入环境变量
           echo "CLASH_URL=$CLASH_URL" >> $GITHUB_ENV
           echo "CLASH_TAG=$CLASH_TAG" >> $GITHUB_ENV
-          echo "QIYI_URL=$QIYI_URL" >> $GITHUB_ENV
-          echo "JIGUANG_URL=$JIGUANG_URL" >> $GITHUB_ENV
-          echo "KUMIAO_URL=$KUMIAO_URL" >> $GITHUB_ENV
-          echo "BILI_URL=$BILI_URL" >> $GITHUB_ENV
+          echo "QIYI_URL=$(get_db_link 1)" >> $GITHUB_ENV
+          echo "JIGUANG_URL=$(get_db_link 2)" >> $GITHUB_ENV
+          echo "KUMIAO_URL=$(get_db_link 3)" >> $GITHUB_ENV
+          echo "BILI_URL=$(get_db_link 1484)" >> $GITHUB_ENV
 
-      - name: Update HTML File
+      - name: Update HTML File via Python
+        shell: python
         run: |
-          # 这种 sed 写法更稳健：先定位包含 ID 的行，再替换该行内的 href
-          sed -i '/id="clash_link"/s|href="[^"]*"|href="${{ env.CLASH_URL }}"|' index.html
-          sed -i '/id="clash_ver"/s|>.*<|>版本: ${{ env.CLASH_TAG }}<|' index.html
-          
-          sed -i '/id="qiyi_link"/s|href="[^"]*"|href="${{ env.QIYI_URL }}"|' index.html
-          sed -i '/id="jiguang_link"/s|href="[^"]*"|href="${{ env.JIGUANG_URL }}"|' index.html
-          sed -i '/id="kumiao_link"/s|href="[^"]*"|href="${{ env.KUMIAO_URL }}"|' index.html
-          sed -i '/id="bili_link"/s|href="[^"]*"|href="${{ env.BILI_URL }}"|' index.html
+          import os
+          import re
+
+          # 读取 index.html
+          with open('index.html', 'r', encoding='utf-8') as f:
+              content = f.read()
+
+          # 定义需要替换的 ID 和 对应的链接环境变量
+          mapping = {
+              'clash_link': os.environ.get('CLASH_URL', ''),
+              'qiyi_link': os.environ.get('QIYI_URL', ''),
+              'jiguang_link': os.environ.get('JIGUANG_URL', ''),
+              'kumiao_link': os.environ.get('KUMIAO_URL', ''),
+              'bili_link': os.environ.get('BILI_URL', '')
+          }
+
+          # 循环替换链接 (正则：找到 id="xxx" 并在该标签内找到 href="")
+          for id_val, url in mapping.items():
+              if url:
+                  # 这个正则可以处理 id 和 href 之间有任意空格、换行的情况
+                  pattern = rf'(id="{id_val}"[^>]*href=")[^"]*(")'
+                  content = re.sub(pattern, rf'\1{url}\2', content)
+
+          # 单独替换 Clash 版本号文字
+          clash_tag = os.environ.get('CLASH_TAG', '')
+          if clash_tag:
+              content = re.sub(r'(id="clash_ver"[^>]*>)[^<]*(<)', rf'\1版本: {clash_tag}\2', content)
+
+          # 写回文件
+          with open('index.html', 'w', encoding='utf-8') as f:
+              f.write(content)
 
       - name: Commit and Push
         run: |
           git config --global user.name "YUNF-Bot"
           git config --global user.email "bot@github.com"
           git add index.html
-          git commit -m "Auto-update: Links from Dangbei & GitHub" || exit 0
+          git commit -m "Auto-update: Links via Python Script" || exit 0
           git push
